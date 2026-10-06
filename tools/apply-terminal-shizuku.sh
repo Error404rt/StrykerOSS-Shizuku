@@ -4,7 +4,7 @@ ROOT="$PWD/upstream"
 MOD="$ROOT/terminal"
 SRC="$MOD/src/main/java/com/stryker/terminal/ui/other"
 grep -q 'dev.rikka.shizuku:api' "$MOD/build.gradle" || \
-  sed -i '/dependencies {/a\\  implementation "dev.rikka.shizuku:api:12.2.0"\n  implementation "dev.rikka.shizuku:provider:12.2.0"' "$MOD/build.gradle"
+  sed -i '/dependencies {/a\\  implementation "dev.rikka.shizuku:api:13.1.5"\n  implementation "dev.rikka.shizuku:provider:13.1.5"' "$MOD/build.gradle"
 mkdir -p "$SRC"
 cat > "$SRC/ShizukuCompat.java" <<'EOF'
 package com.stryker.terminal.ui.other;
