@@ -115,6 +115,182 @@ if 'versionName "6.5.0-shizuku"' not in s:
 p.write_text(s)
 PY
 
+python3 - "$ROOT/terminal/build.gradle" <<'PY'
+from pathlib import Path
+p=Path(__import__('sys').argv[1])
+s=p.read_text()
+s=s.replace('\n  implementation "com.github.topjohnwu.libsu:core:5.0.4"\n','\n')
+p.write_text(s)
+PY
+
+python3 - "$APP/src/main/res/layout/settings_main.xml" <<'PY'
+from pathlib import Path
+from sys import argv
+p=Path(argv[1])
+s=p.read_text()
+card="""        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/privileged_access_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            app:cardBackgroundColor="@color/light_contrast"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/light_lite_contrast"
+            app:strokeWidth="1dp">
+            <LinearLayout
+                android:id="@+id/privileged_access_row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="72dp"
+                android:orientation="horizontal"
+                android:padding="14dp">
+                <ImageView
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="@drawable/settings_icon_bg"
+                    android:padding="10dp"
+                    android:src="@drawable/settings"
+                    app:tint="@color/stryker_accent" />
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <com.google.android.material.textview.MaterialTextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Shizuku / Device Admin"
+                        android:textColor="?android:attr/textColorPrimary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/privileged_access_state"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textColor="@color/grey"
+                        android:textSize="12sp" />
+                </LinearLayout>
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/arrow_right"
+                    app:tint="@color/grey" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+"""
+needle='        <LinearLayout\n            android:id="@+id/engine_section"'
+if 'android:id="@+id/privileged_access_card"' not in s:
+    s=s.replace(needle,card+needle,1)
+p.write_text(s)
+PY
+
+python3 - "$APP/src/main/java/com/zalexdev/stryker/settings/SettingsHomeFragment.java" <<'PY'
+from pathlib import Path
+from sys import argv
+p=Path(argv[1]); s=p.read_text()
+needle='        maxParCount.setText(String.valueOf(currentMaxPar()));'
+code="""        View privilegedAccessRow = view.findViewById(R.id.privileged_access_row);
+        TextView privilegedAccessState = view.findViewById(R.id.privileged_access_state);
+        if (privilegedAccessRow != null && privilegedAccessState != null) {
+            boolean shizuku = com.zalexdev.stryker.utils.ShizukuCompat.hasPermission();
+            int uid = com.zalexdev.stryker.utils.ShizukuCompat.remoteUid();
+            boolean admin = com.zalexdev.stryker.utils.DeviceAdminCompat.isActive(requireContext());
+            String backend = uid == 0 ? "Shizuku root" : (uid == 2000 ? "Shizuku ADB" : "Shizuku unavailable");
+            privilegedAccessState.setText(backend + (admin ? " · Device Admin active" : " · Device Admin inactive"));
+            privilegedAccessRow.setOnClickListener(v -> {
+                try {
+                    startActivity(new android.content.Intent(requireContext(),
+                            com.zalexdev.stryker.privileged.PrivilegedAccessActivity.class));
+                } catch (Throwable ignored) {}
+            });
+        }
+"""
+if 'PrivilegedAccessActivity.class' not in s:
+    s=s.replace(needle,needle+'\n'+code,1)
+p.write_text(s)
+PY
+
+mkdir -p "$APP/src/main/java/com/zalexdev/stryker/privileged"
+cat > "$APP/src/main/java/com/zalexdev/stryker/privileged/PrivilegedAccessActivity.java" <<'EOF'
+package com.zalexdev.stryker.privileged;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.view.Gravity;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.zalexdev.stryker.utils.DeviceAdminCompat;
+import com.zalexdev.stryker.utils.ShizukuCompat;
+
+public class PrivilegedAccessActivity extends Activity {
+    private TextView status;
+    @Override public void onCreate(Bundle state) {
+        super.onCreate(state);
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(32,32,32,32);
+        TextView title = new TextView(this);
+        title.setText("Privileged access");
+        title.setTextSize(26);
+        title.setGravity(Gravity.CENTER_VERTICAL);
+        root.addView(title);
+        status = new TextView(this);
+        status.setPadding(0,24,0,24);
+        root.addView(status);
+        MaterialButton shizuku = new MaterialButton(this);
+        shizuku.setText("Request Shizuku permission");
+        shizuku.setOnClickListener(v -> ShizukuCompat.requestPermission(6505));
+        root.addView(shizuku);
+        MaterialButton admin = new MaterialButton(this);
+        admin.setText("Enable Device Admin");
+        admin.setOnClickListener(v -> startActivity(DeviceAdminCompat.activationIntent(this)));
+        root.addView(admin);
+        setContentView(root);
+        refresh();
+    }
+    @Override protected void onResume() { super.onResume(); refresh(); }
+    private void refresh() {
+        boolean running=ShizukuCompat.isRunning();
+        boolean granted=ShizukuCompat.hasPermission();
+        int uid=ShizukuCompat.remoteUid();
+        boolean admin=DeviceAdminCompat.isActive(this);
+        String backend=uid==0 ? "root (UID 0)" : (uid==2000 ? "ADB shell (UID 2000)" : "unavailable");
+        status.setText("Shizuku: "+(running ? "running" : "stopped")+
+                "\nPermission: "+(granted ? "granted" : "not granted")+
+                "\nBackend: "+backend+
+                "\nDevice Admin: "+(admin ? "active" : "inactive"));
+    }
+}
+EOF
+
+python3 - "$APP/src/main/AndroidManifest.xml" <<'PY'
+from pathlib import Path
+from sys import argv
+p=Path(argv[1]); s=p.read_text()
+activity='''        <activity
+            android:name=".privileged.PrivilegedAccessActivity"
+            android:exported="false"
+            android:label="Privileged access" />
+'''
+if 'android:name=".privileged.PrivilegedAccessActivity"' not in s:
+    s=s.replace('        <activity\n            android:name=".utils.LicenseActivity"',activity+'\n        <activity\n            android:name=".utils.LicenseActivity"',1)
+p.write_text(s)
+PY
+
+cat >> "$APP/proguard-rules.pro" <<'EOF'
+-keep class com.zalexdev.stryker.privileged.PrivilegedAccessActivity { *; }
+EOF
+
 python3 - "$APP/src/main/java/com/zalexdev/stryker/StrykerApp.java" <<'PY'
 from pathlib import Path
 p=Path(__import__('sys').argv[1])
