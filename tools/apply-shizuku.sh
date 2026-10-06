@@ -75,6 +75,83 @@ if 'ShizukuCompat.requestPermission(6505)' not in s:
 p.write_text(s)
 PY
 
+cat > "$APP/src/main/res/xml/stryker_device_admin.xml" <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-policies>
+        <force-lock />
+    </uses-policies>
+</device-admin>
+EOF
+
+cat > "$JAVA/DeviceAdminCompat.java" <<'EOF'
+package com.zalexdev.stryker.utils;
+import android.app.admin.DevicePolicyManager;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import com.zalexdev.stryker.admin.StrykerDeviceAdminReceiver;
+public final class DeviceAdminCompat {
+    private DeviceAdminCompat() {}
+    public static ComponentName component(Context c) {
+        return new ComponentName(c, StrykerDeviceAdminReceiver.class);
+    }
+    public static boolean isActive(Context c) {
+        try {
+            DevicePolicyManager dpm=(DevicePolicyManager)c.getSystemService(Context.DEVICE_POLICY_SERVICE);
+            return dpm != null && dpm.isAdminActive(component(c));
+        } catch (Throwable ignored) { return false; }
+    }
+    public static Intent activationIntent(Context c) {
+        Intent i=new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
+        i.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, component(c));
+        i.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                "Optional Stryker device-management capability. This does not grant root.");
+        return i;
+    }
+}
+EOF
+
+mkdir -p "$APP/src/main/java/com/zalexdev/stryker/admin"
+cat > "$APP/src/main/java/com/zalexdev/stryker/admin/StrykerDeviceAdminReceiver.java" <<'EOF'
+package com.zalexdev.stryker.admin;
+import android.app.admin.DeviceAdminReceiver;
+public class StrykerDeviceAdminReceiver extends DeviceAdminReceiver {}
+EOF
+
+python3 - "$APP/src/main/AndroidManifest.xml" <<'PY'
+from pathlib import Path
+from sys import argv
+p=Path(argv[1]); s=p.read_text()
+receiver='''        <receiver
+            android:name=".admin.StrykerDeviceAdminReceiver"
+            android:description="@string/app_name"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/stryker_device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+'''
+if 'StrykerDeviceAdminReceiver' not in s:
+    s=s.replace('        <provider\n            android:name="androidx.core.content.FileProvider"', receiver+'
+        <provider
+            android:name="androidx.core.content.FileProvider"',1)
+p.write_text(s)
+PY
+
+cat >> "$APP/proguard-rules.pro" <<'EOF'
+
+# Shizuku / device-admin entry points.
+-keep class rikka.shizuku.** { *; }
+-keep class moe.shizuku.** { *; }
+-keep class com.zalexdev.stryker.admin.StrykerDeviceAdminReceiver { *; }
+EOF
+
 python3 - "$APP/src/main/java/com/zalexdev/stryker/utils/Core.java" <<'PY'
 from pathlib import Path
 p=Path(__import__('sys').argv[1]); s=p.read_text()
