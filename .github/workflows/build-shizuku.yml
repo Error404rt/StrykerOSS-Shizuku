@@ -17,7 +17,9 @@ jobs:
           ref: 6.5
           path: upstream
       - name: Apply Shizuku integration
-        run: bash tools/apply-shizuku.sh
+        run: |
+          bash tools/apply-shizuku.sh
+          bash tools/apply-terminal-shizuku.sh
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
