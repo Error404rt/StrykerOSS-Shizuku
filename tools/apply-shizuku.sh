@@ -18,7 +18,7 @@ ROOT="$PWD/upstream"
 APP="$ROOT/app"
 JAVA="$APP/src/main/java/com/zalexdev/stryker/utils"
 grep -q 'dev.rikka.shizuku:api' "$APP/build.gradle" || \
-  sed -i '/dependencies {/a\\    implementation "dev.rikka.shizuku:api:13.1.5"\n    implementation "dev.rikka.shizuku:provider:13.1.5"' "$APP/build.gradle"
+  sed -i '/dependencies {/a\\    implementation "dev.rikka.shizuku:api:12.2.0"\n    implementation "dev.rikka.shizuku:provider:12.2.0"' "$APP/build.gradle"
 python3 - "$APP/src/main/AndroidManifest.xml" <<'PY'
 from pathlib import Path
 from sys import argv
@@ -55,13 +55,12 @@ public final class ShizukuCompat {
     public static int remoteUid() { try { return Shizuku.getUid(); } catch (Throwable ignored) { return -1; } }
     public static boolean isRootBackend() { return remoteUid() == 0; }
     public static boolean isShellBackend() { return remoteUid() == 2000; }
-    public static Process newShell() {
+    public static Process newShell() throws java.io.IOException {
         if (hasPermission()) {
             try { return Shizuku.newProcess(new String[]{"/system/bin/sh"}, null, null); }
             catch (Throwable ignored) {}
         }
-        try { return new ProcessBuilder("/system/bin/sh").redirectErrorStream(false).start(); }
-        catch (Throwable ignored) { return null; }
+        return new ProcessBuilder("/system/bin/sh").redirectErrorStream(false).start();
     }
     public static Process newProcess(String[] command) {
         if (!hasPermission()) return null;
@@ -120,7 +119,7 @@ from pathlib import Path
 p=Path(__import__('sys').argv[1])
 s=p.read_text()
 if 'dev.rikka.shizuku:api' not in s:
-    s=s.replace('dependencies {', 'dependencies {\n  implementation "dev.rikka.shizuku:api:13.1.5"\n  implementation "dev.rikka.shizuku:provider:13.1.5"')
+    s=s.replace('dependencies {', 'dependencies {\n  implementation "dev.rikka.shizuku:api:12.2.0"\n  implementation "dev.rikka.shizuku:provider:12.2.0"')
 p.write_text(s)
 PY
 
