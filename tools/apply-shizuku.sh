@@ -42,9 +42,12 @@ public final class ShizukuCompat {
     public static boolean isRootBackend() { return remoteUid() == 0; }
     public static boolean isShellBackend() { return remoteUid() == 2000; }
     public static Process newShell() {
-        if (!hasPermission()) return null;
-        try { return Shizuku.newProcess(new String[]{"/system/bin/sh"}, null, null); }
-        catch (Throwable e) { return null; }
+        if (hasPermission()) {
+            try { return Shizuku.newProcess(new String[]{"/system/bin/sh"}, null, null); }
+            catch (Throwable ignored) {}
+        }
+        try { return new ProcessBuilder("/system/bin/sh").redirectErrorStream(false).start(); }
+        catch (Throwable ignored) { return null; }
     }
     public static Process newProcess(String[] command) {
         if (!hasPermission()) return null;
@@ -138,9 +141,7 @@ receiver='''        <receiver
         </receiver>
 '''
 if 'StrykerDeviceAdminReceiver' not in s:
-    s=s.replace('        <provider\n            android:name="androidx.core.content.FileProvider"', receiver+'
-        <provider
-            android:name="androidx.core.content.FileProvider"',1)
+    s=s.replace('        <provider\\n            android:name="androidx.core.content.FileProvider"', receiver+'\\n        <provider\\n            android:name="androidx.core.content.FileProvider"',1)
 p.write_text(s)
 PY
 
