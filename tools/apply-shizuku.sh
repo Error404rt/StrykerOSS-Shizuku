@@ -67,6 +67,22 @@ for p in Path(sys.argv[1]).rglob('*.java'):
     s=s.replace('Runtime.getRuntime().exec("su")','com.zalexdev.stryker.utils.ShizukuCompat.newShell()')
     if s != old: p.write_text(s)
 PY
+python3 - "$APP/src/main/java/com/zalexdev/stryker/StrykerApp.java" <<'PY'
+from pathlib import Path
+p=Path(__import__('sys').argv[1])
+s=p.read_text()
+needle='        super.onCreate();'
+replacement='''        super.onCreate();
+        try {
+            rikka.shizuku.Shizuku.addBinderReceivedListenerSticky(
+                    () -> com.zalexdev.stryker.utils.ShizukuCompat.requestPermission(6505));
+        } catch (Throwable ignored) {}
+'''
+if 'ShizukuCompat.requestPermission(6505)' not in s:
+    s=s.replace(needle, replacement, 1)
+p.write_text(s)
+PY
+
 python3 - "$APP/src/main/java/com/zalexdev/stryker/utils/Core.java" <<'PY'
 from pathlib import Path
 p=Path(__import__('sys').argv[1]); s=p.read_text()
