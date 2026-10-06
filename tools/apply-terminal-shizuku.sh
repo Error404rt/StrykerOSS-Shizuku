@@ -18,8 +18,11 @@ public final class ShizukuCompat {
         catch (Throwable ignored) { return false; }
     }
     public static Process newShell() {
-        if (!allowed()) return null;
-        try { return Shizuku.newProcess(new String[]{"/system/bin/sh"}, null, null); }
+        if (allowed()) {
+            try { return Shizuku.newProcess(new String[]{"/system/bin/sh"}, null, null); }
+            catch (Throwable ignored) {}
+        }
+        try { return new ProcessBuilder("/system/bin/sh").redirectErrorStream(false).start(); }
         catch (Throwable ignored) { return null; }
     }
 }
