@@ -4,7 +4,7 @@ ROOT="$PWD/upstream"
 MOD="$ROOT/terminal"
 SRC="$MOD/src/main/java/com/stryker/terminal/ui/other"
 grep -q 'dev.rikka.shizuku:api' "$MOD/build.gradle" || \
-  sed -i '/dependencies {/a\\  implementation "dev.rikka.shizuku:api:13.1.5"\n  implementation "dev.rikka.shizuku:provider:13.1.5"' "$MOD/build.gradle"
+  sed -i '/dependencies {/a\\  implementation "dev.rikka.shizuku:api:12.2.0"\n  implementation "dev.rikka.shizuku:provider:12.2.0"' "$MOD/build.gradle"
 mkdir -p "$SRC"
 cat > "$SRC/ShizukuCompat.java" <<'EOF'
 package com.stryker.terminal.ui.other;
@@ -17,13 +17,12 @@ public final class ShizukuCompat {
                 && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED; }
         catch (Throwable ignored) { return false; }
     }
-    public static Process newShell() {
+    public static Process newShell() throws java.io.IOException {
         if (allowed()) {
             try { return Shizuku.newProcess(new String[]{"/system/bin/sh"}, null, null); }
             catch (Throwable ignored) {}
         }
-        try { return new ProcessBuilder("/system/bin/sh").redirectErrorStream(false).start(); }
-        catch (Throwable ignored) { return null; }
+        return new ProcessBuilder("/system/bin/sh").redirectErrorStream(false).start();
     }
 }
 EOF
