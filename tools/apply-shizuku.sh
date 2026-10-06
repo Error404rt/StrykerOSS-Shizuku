@@ -115,6 +115,73 @@ if 'versionName "6.5.0-shizuku"' not in s:
 p.write_text(s)
 PY
 
+python3 - "$ROOT/NeoTermBridge/build.gradle" <<'PY'
+from pathlib import Path
+p=Path(__import__('sys').argv[1])
+s=p.read_text()
+if 'dev.rikka.shizuku:api' not in s:
+    s=s.replace('dependencies {', 'dependencies {\n  implementation "dev.rikka.shizuku:api:13.1.5"\n  implementation "dev.rikka.shizuku:provider:13.1.5"')
+p.write_text(s)
+PY
+
+mkdir -p "$ROOT/NeoTermBridge/src/main/java/com/stryker/terminal/bridge"
+cat > "$ROOT/NeoTermBridge/src/main/java/com/stryker/terminal/bridge/ShizukuBridge.java" <<'EOF'
+package com.stryker.terminal.bridge;
+
+import android.content.pm.PackageManager;
+import rikka.shizuku.Shizuku;
+
+import java.io.OutputStream;
+
+public final class ShizukuBridge {
+    private ShizukuBridge() {}
+
+    public static boolean available() {
+        try {
+            return Shizuku.pingBinder()
+                    && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    public static void run(String command) {
+        if (!available()) return;
+        new Thread(() -> {
+            Process p = null;
+            try {
+                p = Shizuku.newProcess(new String[]{"/system/bin/sh","-c",command}, null, null);
+                OutputStream in = p.getOutputStream();
+                if (in != null) in.close();
+                p.waitFor();
+            } catch (Throwable ignored) {
+            } finally {
+                if (p != null) try { p.destroy(); } catch (Throwable ignored) {}
+            }
+        }, "stryker-shizuku").start();
+    }
+}
+EOF
+
+python3 - "$ROOT/NeoTermBridge/src/main/java/com/stryker/terminal/bridge/Runner.java" <<'PY'
+from pathlib import Path
+p=Path(__import__('sys').argv[1])
+s=p.read_text()
+s=s.replace('''  public static void run_cmd_android(String cmd) {
+    Intent intent = Bridge.createExecuteIntent("/data/data/hilled.pwnterm/files/usr/bin/android-su", cmd);
+    context.get().startActivity(intent);
+  }''','''  public static void run_cmd_android(String cmd) {
+    ShizukuBridge.run(cmd);
+  }''')
+s=s.replace('''  public static void run_cmd_android_aactivity(String cmd) {
+    Intent intent = Bridge.createExecuteIntent("/data/data/hilled.pwnterm/files/usr/bin/android-su", cmd);
+    activity.startActivity(intent);
+  }''','''  public static void run_cmd_android_aactivity(String cmd) {
+    ShizukuBridge.run(cmd);
+  }''')
+p.write_text(s)
+PY
+
 python3 - "$ROOT/terminal/build.gradle" <<'PY'
 from pathlib import Path
 p=Path(__import__('sys').argv[1])
