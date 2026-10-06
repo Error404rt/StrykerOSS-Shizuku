@@ -76,6 +76,45 @@ public final class ShizukuCompat {
     }
 }
 EOF
+python3 - "$APP/src/main/java/com/zalexdev/stryker/utils/Core.java" <<'PY'
+from pathlib import Path
+p=Path(__import__('sys').argv[1]); s=p.read_text()
+s=s.replace('''    public void moveFile(@NonNull String source, @NonNull String destination){
+        if (isRootless()) {
+''','''    public void moveFile(@NonNull String source, @NonNull String destination){
+        if (isRootless() && !ShizukuCompat.hasPermission()) {
+''')
+s=s.replace('''    public void deleteFile(@NonNull String file){
+        if (isRootless()) {
+''','''    public void deleteFile(@NonNull String file){
+        if (isRootless() && !ShizukuCompat.hasPermission()) {
+''')
+s=s.replace('''    public void createFolder(@NonNull String folder){
+        if (isRootless()) {
+''','''    public void createFolder(@NonNull String folder){
+        if (isRootless() && !ShizukuCompat.hasPermission()) {
+''')
+s=s.replace('''    public void chmodFolder(@NonNull String folder){
+        if (isRootless()) return;
+''','''    public void chmodFolder(@NonNull String folder){
+        if (isRootless() && !ShizukuCompat.hasPermission()) return;
+''')
+s=s.replace('''    public void wpsDisableWifiIfEnabled(){
+        if (isRootless()) return;
+''','''    public void wpsDisableWifiIfEnabled(){
+        if (isRootless() && !ShizukuCompat.hasPermission()) return;
+''')
+p.write_text(s)
+PY
+
+python3 - "$APP/build.gradle" <<'PY'
+from pathlib import Path
+p=Path(__import__('sys').argv[1]); s=p.read_text()
+if 'versionName "6.5.0-shizuku"' not in s:
+    s=s.replace('versionName "6.5.0"','versionName "6.5.0-shizuku"')
+p.write_text(s)
+PY
+
 python3 - "$APP/src/main/java/com/zalexdev/stryker/StrykerApp.java" <<'PY'
 from pathlib import Path
 p=Path(__import__('sys').argv[1])
