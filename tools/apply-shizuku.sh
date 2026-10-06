@@ -4,7 +4,7 @@ ROOT="$PWD/upstream"
 APP="$ROOT/app"
 JAVA="$APP/src/main/java/com/zalexdev/stryker/utils"
 grep -q 'dev.rikka.shizuku:api' "$APP/build.gradle" || \
-  sed -i '/dependencies {/a\\    implementation "dev.rikka.shizuku:api:12.2.0"\n    implementation "dev.rikka.shizuku:provider:12.2.0"' "$APP/build.gradle"
+  sed -i '/dependencies {/a\\    implementation "dev.rikka.shizuku:api:13.1.5"\n    implementation "dev.rikka.shizuku:provider:13.1.5"' "$APP/build.gradle"
 python3 - "$APP/src/main/AndroidManifest.xml" <<'PY'
 from pathlib import Path
 from sys import argv
@@ -40,6 +40,7 @@ public final class ShizukuCompat {
     }
     public static int remoteUid() { try { return Shizuku.getUid(); } catch (Throwable ignored) { return -1; } }
     public static boolean isRootBackend() { return remoteUid() == 0; }
+    public static boolean isShellBackend() { return remoteUid() == 2000; }
     public static Process newShell() {
         if (!hasPermission()) return null;
         try { return Shizuku.newProcess(new String[]{"/system/bin/sh"}, null, null); }
@@ -58,15 +59,6 @@ public final class ShizukuCompat {
     }
 }
 EOF
-python3 - "$APP/src/main/java" <<'PY'
-from pathlib import Path
-import sys
-for p in Path(sys.argv[1]).rglob('*.java'):
-    s=p.read_text(errors='ignore'); old=s
-    s=s.replace('Runtime.getRuntime().exec("su -mm")','com.zalexdev.stryker.utils.ShizukuCompat.newShell()')
-    s=s.replace('Runtime.getRuntime().exec("su")','com.zalexdev.stryker.utils.ShizukuCompat.newShell()')
-    if s != old: p.write_text(s)
-PY
 python3 - "$APP/src/main/java/com/zalexdev/stryker/StrykerApp.java" <<'PY'
 from pathlib import Path
 p=Path(__import__('sys').argv[1])
