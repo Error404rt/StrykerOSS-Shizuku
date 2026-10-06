@@ -1,3 +1,17 @@
+python3 - "$APP/build.gradle" "$ROOT/terminal/build.gradle" <<'PY'
+from pathlib import Path
+import sys
+for arg in sys.argv[1:]:
+    p=Path(arg)
+    if not p.exists(): continue
+    s=p.read_text()
+    s=s.replace('compileSdk 37','compileSdk 36')
+    s=s.replace('compileSdk 36','compileSdk 36')
+    if 'targetSdk 37' in s:
+        s=s.replace('targetSdk 37','targetSdk 36')
+    p.write_text(s)
+PY
+
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$PWD/upstream"
